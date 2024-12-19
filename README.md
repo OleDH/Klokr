@@ -1,4 +1,4 @@
-# Clockr
+# Klokr
 CLI practice project. Combine a todo list with a time management aspect.
 
 Start in Bash, may transition to golang.
