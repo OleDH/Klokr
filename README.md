@@ -1,7 +1,6 @@
 # Klokr
-CLI practice project. Combine a todo list with a time management aspect.
+CLI practice project written in Golang. Combine a todo list with a time management aspect.
 
-Start in Bash, may transition to golang.
 Feature list:
 
 1. To Do list
