@@ -7,6 +7,8 @@ import (
 	"os"
 )
 
+var filepath = "clocked.json"
+
 type ClockedItem struct {
 	Activity  string `json:"activity"`
 	Frequency int    `json:"frequency"`
@@ -74,22 +76,33 @@ func getFromFile(input string) ClockedItem {
 
 }
 
-func clockIn(input string) {
+func clockIn(input string) error {
+
+	//stringen som blir tatt inn er kun fil, fiks dette så det er også fra filen.
+
+	//readFromFile(input)
 
 	editable := getFromFile(input)
 
-	if editable.Frequency <= 0 {
-		fmt.Println("too smol")
-		return
-	}
-
 	editable.Frequency--
+	editable.Frequency--
+	editable.Frequency--
+	//editable.Frequency--
+
+	if editable.Frequency < 0 {
+		//fmt.Println("too smol")
+		return fmt.Errorf("Too smol")
+		//return fmt.Errorf("Too smol")
+	}
 
 	dataEntry(editable)
 
 	fmt.Println("Clocked in !")
 
 	readFromFile(input)
+	return nil
+
+	//clocked in spør etter en spesifikk fil, den må også spørre om en aktivitet. Lurer på om interfaces og slikt her.
 
 }
 
@@ -97,9 +110,12 @@ func main() {
 
 	dataEntry(makeClock("Krita", 3))
 
-	//readFromFile("clocked.json")
 	clockIn("clocked.json")
+
+	//hva er det du clocker inn?, clockIn bør ta en activity
 
 }
 
 //TODO: Fiks litt mer feilmeldinger, implementer lister og appending, senere tid og sånn
+
+//filen bør være statisk kanskje til og med en global variabel. input bør være dynamisk clockin bør ta et input, sjekke i filen om det fins, og så dekrementere det
