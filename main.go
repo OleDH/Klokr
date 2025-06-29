@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -25,14 +26,14 @@ func makeClock(s string, z int) ClockedItem {
 
 }
 
-func dataEntry(c ClockedItem) error {
+func dataEntry(filedata map[string]ClockedItem) error {
 
-	data, err := json.Marshal(c)
+	data, err := json.Marshal(filedata)
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile("clocked.json", data, 0644)
+	err = os.WriteFile(filepath, data, 0644)
 	if err != nil {
 		return err
 	}
@@ -41,26 +42,9 @@ func dataEntry(c ClockedItem) error {
 
 }
 
-func readFromFile(input string) {
+func readFromFile(m map[string]ClockedItem) {
 
-	file_contents, err := os.ReadFile(input)
-	if err != nil {
-		log.Fatal(err)
-	}
-	var clocked ClockedItem
-	if err := json.Unmarshal(file_contents, &clocked); err != nil {
-
-		log.Fatalf("Error unmarshalling JSON: %v", err)
-	}
-	fmt.Println(clocked)
-
-	//kan bare lese et element enn så lenge
-
-}
-
-func getFromFile(input string) ClockedItem {
-
-	file_contents, err := os.ReadFile(input)
+	file_contents, err := os.ReadFile(filepath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -70,52 +54,120 @@ func getFromFile(input string) ClockedItem {
 		log.Fatalf("Error unmarshalling JSON: %v", err)
 	}
 
-	return clocked
+	fmt.Println(m)
 
 	//kan bare lese et element enn så lenge
 
 }
 
-func clockIn(input string) error {
+func getFromFile(filepath, input string, m map[string]ClockedItem) ClockedItem {
 
-	//stringen som blir tatt inn er kun fil, fiks dette så det er også fra filen.
+	file_contents, err := os.ReadFile(filepath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var clocked ClockedItem
+	if err := json.Unmarshal(file_contents, &clocked); err != nil {
 
-	//readFromFile(input)
+		log.Fatalf("Error unmarshalling JSON: %v", err)
+	}
 
-	editable := getFromFile(input)
+	//bør ha en sjekk om den fins?
+	return m[input]
+
+	//kan bare lese et element enn så lenge
+
+}
+
+func getMapfromFile(filepath string) map[string]ClockedItem {
+
+	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+		// File doesn't exist, return empty map
+		return make(map[string]ClockedItem)
+	}
+
+	file_contents, err := os.ReadFile(filepath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var struturedData map[string]ClockedItem
+	if err := json.Unmarshal(file_contents, &struturedData); err != nil {
+
+		log.Fatalf("Error unmarshalling JSON: %v", err)
+	}
+
+	return struturedData
+
+}
+
+func clockIn(input string, data map[string]ClockedItem) error {
+
+	editable := getFromFile(filepath, input, data)
 
 	editable.Frequency--
-	editable.Frequency--
-	editable.Frequency--
-	//editable.Frequency--
+
+	data[editable.Activity] = editable
 
 	if editable.Frequency < 0 {
-		//fmt.Println("too smol")
-		return fmt.Errorf("Too smol")
-		//return fmt.Errorf("Too smol")
+		return fmt.Errorf("too small")
 	}
 
-	dataEntry(editable)
+	dataEntry(data)
 
 	fmt.Println("Clocked in !")
 
-	readFromFile(input)
+	readFromFile(data)
+
 	return nil
 
-	//clocked in spør etter en spesifikk fil, den må også spørre om en aktivitet. Lurer på om interfaces og slikt her.
+}
+
+func interactiveInit(key string, freq int, m map[string]ClockedItem) {
+
+	m[key] = makeClock(key, freq)
+
+	dataEntry(m)
 
 }
 
 func main() {
 
-	dataEntry(makeClock("Krita", 3))
+	lookupMap := getMapfromFile(filepath)
 
-	clockIn("clocked.json")
+	activity := ""
+	frequency := 0
+	clocking := ""
 
-	//hva er det du clocker inn?, clockIn bør ta en activity
+	flag.StringVar(&activity, "a", "myActivity", "your activity here")
+	flag.StringVar(&clocking, "c", "", "your clocked activity here")
+	flag.IntVar(&frequency, "f", 0, "your frequency here")
+
+	//bruker default verdien når man klokker inn, clocking må kanskje ta inn andre args
+
+	flag.Parse()
+
+	if activity != "" && frequency != 0 {
+
+		interactiveInit(activity, frequency, lookupMap)
+
+	}
+
+	//clocked og freq samtidig kan bli sketch
+
+	if clocking != "" {
+
+		//kanskje ha noe listing av json filen på forhånd.
+
+		clockIn(clocking, lookupMap)
+
+	}
+
+	//capitalize eller standardiser før en check.
 
 }
 
 //TODO: Fiks litt mer feilmeldinger, implementer lister og appending, senere tid og sånn
-
-//filen bør være statisk kanskje til og med en global variabel. input bør være dynamisk clockin bør ta et input, sjekke i filen om det fins, og så dekrementere det
+//TODO: Implementer Receiver funksjoner.
+//TODO: User Input --kinda, sanitize med stor forbokstav
+//TODO:Hvis fil ikke finnes, lag den.
