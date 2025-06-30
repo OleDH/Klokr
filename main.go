@@ -15,7 +15,7 @@ type ClockedItem struct {
 	Frequency int    `json:"frequency"`
 }
 
-func makeClock(s string, z int) ClockedItem {
+func (c *ClockedItem) makeClock(s string, z int) ClockedItem {
 
 	NewActivity := ClockedItem{
 		Activity:  s,
@@ -42,19 +42,11 @@ func dataEntry(filedata map[string]ClockedItem) error {
 
 }
 
-func readFromFile(m map[string]ClockedItem) {
+func readFromFile() {
 
-	file_contents, err := os.ReadFile(filepath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	var clocked ClockedItem
-	if err := json.Unmarshal(file_contents, &clocked); err != nil {
+	mapElement := getMapfromFile()
 
-		log.Fatalf("Error unmarshalling JSON: %v", err)
-	}
-
-	fmt.Println(m)
+	fmt.Println(mapElement[input])
 
 	//kan bare lese et element enn så lenge
 
@@ -79,7 +71,7 @@ func getFromFile(filepath, input string, m map[string]ClockedItem) ClockedItem {
 
 }
 
-func getMapfromFile(filepath string) map[string]ClockedItem {
+func getMapfromFile() map[string]ClockedItem {
 
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		// File doesn't exist, return empty map
@@ -115,10 +107,9 @@ func clockIn(input string, data map[string]ClockedItem) error {
 
 	dataEntry(data)
 
-	fmt.Println("Clocked in !")
+	fmt.Printf("Clocked in %s!, %v sessions remaining ", editable.Activity,editable.Frequency)
 
-	readFromFile(data)
-
+	//readFromFile(input)
 	return nil
 
 }
@@ -133,7 +124,7 @@ func interactiveInit(key string, freq int, m map[string]ClockedItem) {
 
 func main() {
 
-	lookupMap := getMapfromFile(filepath)
+	lookupMap := getMapfromFile()
 
 	activity := ""
 	frequency := 0
@@ -168,6 +159,7 @@ func main() {
 }
 
 //TODO: Fiks litt mer feilmeldinger, implementer lister og appending, senere tid og sånn
-//TODO: Implementer Receiver funksjoner.
+//TODO: Implementer Receiver funksjoner, kan drøyes litt.
 //TODO: User Input --kinda, sanitize med stor forbokstav
 //TODO:Hvis fil ikke finnes, lag den.
+//TODO: Delete greier
