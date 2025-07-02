@@ -60,7 +60,7 @@ func readFromFile(m map[string]ClockedItem) {
 
 }
 
-func getFromFile(filepath, input string, m map[string]ClockedItem) ClockedItem {
+func getFromFile(input string, m map[string]ClockedItem) ClockedItem {
 
 	file_contents, err := os.ReadFile(filepath)
 	if err != nil {
@@ -79,7 +79,7 @@ func getFromFile(filepath, input string, m map[string]ClockedItem) ClockedItem {
 
 }
 
-func getMapfromFile(filepath string) map[string]ClockedItem {
+func getMapfromFile() map[string]ClockedItem {
 
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		// File doesn't exist, return empty map
@@ -103,7 +103,7 @@ func getMapfromFile(filepath string) map[string]ClockedItem {
 
 func clockIn(input string, data map[string]ClockedItem) error {
 
-	editable := getFromFile(filepath, input, data)
+	editable := getFromFile(input, data)
 
 	editable.Frequency--
 
@@ -133,15 +133,21 @@ func interactiveInit(key string, freq int, m map[string]ClockedItem) {
 
 func main() {
 
-	lookupMap := getMapfromFile(filepath)
+	lookupMap := getMapfromFile()
+	//burde denne gå i interactive init?
 
+	//generiske verdier for flaggene
 	activity := ""
 	frequency := 0
 	clocking := ""
+	printelement := ""
+	list_all := false
 
-	flag.StringVar(&activity, "a", "myActivity", "your activity here")
-	flag.StringVar(&clocking, "c", "", "your clocked activity here")
-	flag.IntVar(&frequency, "f", 0, "your frequency here")
+	flag.StringVar(&activity, "a", "myActivity", "Add activity or update activity")
+	flag.StringVar(&clocking, "k", "", "Clock Activity")
+	flag.IntVar(&frequency, "f", 0, "Sets frequency for desired activity")
+	flag.StringVar(&printelement, "p", "", "Prints activity")
+	flag.BoolVar(&list_all, "ls", false, "Pretty prints the todolist")
 
 	//bruker default verdien når man klokker inn, clocking må kanskje ta inn andre args
 
@@ -150,6 +156,7 @@ func main() {
 	if activity != "" && frequency != 0 {
 
 		interactiveInit(activity, frequency, lookupMap)
+		//bruke dataentry her istedet?
 
 	}
 
@@ -163,6 +170,33 @@ func main() {
 
 	}
 
+	if printelement != "" {
+
+		//kanskje ha noe listing av json filen på forhånd.
+
+		//readFromFile(lookupMap)
+		a := lookupMap[printelement]
+		fmt.Printf("Activity: %s \nFrequency: %d\n", a.Activity, a.Frequency)
+
+	}
+
+	if list_all {
+
+		//kanskje ha noe listing av json filen på forhånd.
+
+		//readFromFile(lookupMap)
+		println("Activity|Frequency")
+		for activ, freq := range lookupMap {
+
+			fmt.Printf("%s\t\t%d\n", activ, freq.Frequency)
+
+			//ser noenlunde grei ut, finn lit mer ut med formatering.
+			//bør og se hvordan man kan print ut mer når structen blir større m/timestamps etc
+
+		}
+
+	}
+
 	//capitalize eller standardiser før en check.
 
 }
@@ -171,3 +205,11 @@ func main() {
 //TODO: Implementer Receiver funksjoner.
 //TODO: User Input --kinda, sanitize med stor forbokstav
 //TODO:Hvis fil ikke finnes, lag den.
+//TODO: Print flagg/funksjon, spesifikt og alt
+//TODO: Multi input, sjekk om det er forskjell i stor og lite flagg.
+//TODO:Sletting
+//TODO: Renmae activity?
+//Settings: Delete activity when done? Temp flagg?
+//Legge inn timestamps
+//Installscript, kompilasjon, etter å ha fikset feilmeldinger, 0.1 bør bli ferdig snart.
+//REPL i 0.2 med en kortversjon (rediger et enkeltelement, og en komplett en)
