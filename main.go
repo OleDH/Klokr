@@ -56,8 +56,6 @@ func readFromFile(m map[string]ClockedItem) {
 
 	fmt.Println(m)
 
-	//kan bare lese et element enn så lenge
-
 }
 
 func getFromFile(input string, m map[string]ClockedItem) ClockedItem {
@@ -102,14 +100,14 @@ func getMapfromFile() map[string]ClockedItem {
 }
 
 func clockIn(input string, data map[string]ClockedItem) error {
-
+	//decrement func
 	editable := getFromFile(input, data)
 
 	editable.Frequency--
 
 	data[editable.Activity] = editable
 
-	if editable.Frequency < 0 {
+	if editable.Frequency <= 0 {
 		return fmt.Errorf("too small")
 	}
 
@@ -131,10 +129,22 @@ func interactiveInit(key string, freq int, m map[string]ClockedItem) {
 
 }
 
+func listAll(m map[string]ClockedItem) {
+
+	println("Activity|Frequency")
+	for activ, freq := range m {
+
+		fmt.Printf("%s\t\t%d\n", activ, freq.Frequency)
+
+		//ser noenlunde grei ut, finn lit mer ut med formatering.
+		//bør og se hvordan man kan print ut mer når structen blir større m/timestamps etc
+
+	}
+}
+
 func main() {
 
 	lookupMap := getMapfromFile()
-	//burde denne gå i interactive init?
 
 	//generiske verdier for flaggene
 	activity := ""
@@ -182,18 +192,7 @@ func main() {
 
 	if list_all {
 
-		//kanskje ha noe listing av json filen på forhånd.
-
-		//readFromFile(lookupMap)
-		println("Activity|Frequency")
-		for activ, freq := range lookupMap {
-
-			fmt.Printf("%s\t\t%d\n", activ, freq.Frequency)
-
-			//ser noenlunde grei ut, finn lit mer ut med formatering.
-			//bør og se hvordan man kan print ut mer når structen blir større m/timestamps etc
-
-		}
+		listAll(lookupMap)
 
 	}
 
@@ -203,13 +202,15 @@ func main() {
 
 //TODO: Fiks litt mer feilmeldinger, implementer lister og appending, senere tid og sånn
 //TODO: Implementer Receiver funksjoner.
-//TODO: User Input --kinda, sanitize med stor forbokstav
-//TODO:Hvis fil ikke finnes, lag den.
-//TODO: Print flagg/funksjon, spesifikt og alt
-//TODO: Multi input, sjekk om det er forskjell i stor og lite flagg.
+//TODO: User Input --Done! Basic flaggtyper er fikset, negative verdier ser ut til å bli håndtert.
+//TODO:Hvis fil ikke finnes, lag den. --Done! os.writefile ser ut til å håndtere dette, kan ta en titt på custom filer senere.
+//TODO: Print flagg/funksjon, spesifikt og alt --Done! Tanker videre: Ikke skalerbar til evt større structs
+//TODO: Multi input, sjekk om det er forskjell i stor og lite flagg. Per nå tar den kun siste inputet som gyldig.
 //TODO:Sletting
-//TODO: Renmae activity?
+//TODO: Rename activity?
 //Settings: Delete activity when done? Temp flagg?
 //Legge inn timestamps
 //Installscript, kompilasjon, etter å ha fikset feilmeldinger, 0.1 bør bli ferdig snart.
 //REPL i 0.2 med en kortversjon (rediger et enkeltelement, og en komplett en)
+//unngå dobbel/trippelprinting, alt bør bruke samme print funksjon, og kun gjøre det engang.
+//Cutoff på tekst/formatering.
