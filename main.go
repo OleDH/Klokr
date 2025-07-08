@@ -9,6 +9,7 @@ import (
 )
 
 var filepath = "clocked.json"
+var delete_empty = true
 
 type ClockedItem struct {
 	Activity  string `json:"activity"`
@@ -103,12 +104,17 @@ func clockIn(input string, data map[string]ClockedItem) error {
 	//decrement func
 	editable := getFromFile(input, data)
 
-	editable.Frequency--
-
-	data[editable.Activity] = editable
-
 	if editable.Frequency <= 0 {
 		return fmt.Errorf("too small")
+	}
+
+	editable.Frequency--
+	data[editable.Activity] = editable
+
+	if editable.Frequency == 0 && delete_empty {
+
+		delete(data, input)
+
 	}
 
 	dataEntry(data)
@@ -134,12 +140,14 @@ func listAll(m map[string]ClockedItem) {
 	println("Activity|Frequency")
 	for activ, freq := range m {
 
-		fmt.Printf("%s\t\t%d\n", activ, freq.Frequency)
+		fmt.Printf("%.20s\t%d\n", activ, freq.Frequency)
 
 		//ser noenlunde grei ut, finn lit mer ut med formatering.
 		//bør og se hvordan man kan print ut mer når structen blir større m/timestamps etc
 
 	}
+
+	fmt.Printf("OPS: Delete empty is %t \n", delete_empty)
 }
 
 func main() {
@@ -152,12 +160,15 @@ func main() {
 	clocking := ""
 	printelement := ""
 	list_all := false
+	delete_flag := ""
 
 	flag.StringVar(&activity, "a", "myActivity", "Add activity or update activity")
+	flag.StringVar(&delete_flag, "d", "", "Delete activity")
 	flag.StringVar(&clocking, "k", "", "Clock Activity")
 	flag.IntVar(&frequency, "f", 0, "Sets frequency for desired activity")
 	flag.StringVar(&printelement, "p", "", "Prints activity")
 	flag.BoolVar(&list_all, "ls", false, "Pretty prints the todolist")
+	flag.BoolVar(&delete_empty, "sde", false, "Set delete when activity empty")
 
 	//bruker default verdien når man klokker inn, clocking må kanskje ta inn andre args
 
@@ -174,9 +185,17 @@ func main() {
 
 	if clocking != "" {
 
-		//kanskje ha noe listing av json filen på forhånd.
-
 		clockIn(clocking, lookupMap)
+
+	}
+
+	if delete_flag != "" {
+
+		delete(lookupMap, delete_flag)
+		dataEntry(lookupMap)
+		fmt.Printf("Deleted %s \n", delete_flag)
+
+		//her bør det nok være noe feilhåndtering
 
 	}
 
@@ -206,7 +225,6 @@ func main() {
 //TODO:Hvis fil ikke finnes, lag den. --Done! os.writefile ser ut til å håndtere dette, kan ta en titt på custom filer senere.
 //TODO: Print flagg/funksjon, spesifikt og alt --Done! Tanker videre: Ikke skalerbar til evt større structs
 //TODO: Multi input, sjekk om det er forskjell i stor og lite flagg. Per nå tar den kun siste inputet som gyldig.
-//TODO:Sletting
 //TODO: Rename activity?
 //Settings: Delete activity when done? Temp flagg?
 //Legge inn timestamps
@@ -214,3 +232,11 @@ func main() {
 //REPL i 0.2 med en kortversjon (rediger et enkeltelement, og en komplett en)
 //unngå dobbel/trippelprinting, alt bør bruke samme print funksjon, og kun gjøre det engang.
 //Cutoff på tekst/formatering.
+//Priority?
+//Grab bag
+//Cleanup etter lang tid
+//tab completion?
+// default til 1? + hvis man ikke setter flagg og den ikke fins registrer den, eller clock inn hvis den fins. er dette dårlig oppførsel?
+//bug? Hva er my acitivity?
+//spaces i string i aktivitet? er dette et problem med hvordan map funker?
+//waterfall? dependent activities
