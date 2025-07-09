@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 )
 
 var filepath = "clocked.json"
@@ -116,20 +117,20 @@ func clockIn(input string, data map[string]ClockedItem) error {
 		delete(data, input)
 
 	}
-
 	dataEntry(data)
-
 	fmt.Println("Clocked in !")
-
 	readFromFile(data)
-
 	return nil
-
 }
 
-func interactiveInit(key string, freq int, m map[string]ClockedItem) {
+func interactiveInit(input string, freq int, m map[string]ClockedItem) {
 
-	m[key] = makeClock(key, freq)
+	input = fmt.Sprintf("%s", input)
+
+	key := strings.TrimRight(input, " ")
+
+	fmt.Println(key)
+	m[key] = makeClock(input, freq)
 
 	dataEntry(m)
 
@@ -196,6 +197,7 @@ func main() {
 		fmt.Printf("Deleted %s \n", delete_flag)
 
 		//her bør det nok være noe feilhåndtering
+		//burde være en func, kanskje hvis levert med en int slett i listen? må se litt på hvordan map er lagret.
 
 	}
 
@@ -221,16 +223,12 @@ func main() {
 
 //TODO: Fiks litt mer feilmeldinger, implementer lister og appending, senere tid og sånn
 //TODO: Implementer Receiver funksjoner.
-//TODO: User Input --Done! Basic flaggtyper er fikset, negative verdier ser ut til å bli håndtert.
-//TODO:Hvis fil ikke finnes, lag den. --Done! os.writefile ser ut til å håndtere dette, kan ta en titt på custom filer senere.
-//TODO: Print flagg/funksjon, spesifikt og alt --Done! Tanker videre: Ikke skalerbar til evt større structs
-//TODO: Multi input, sjekk om det er forskjell i stor og lite flagg. Per nå tar den kun siste inputet som gyldig.
+//TODO: Multiinput, sjekk om det fins noe ala unix opts.
 //TODO: Rename activity?
-//Settings: Delete activity when done? Temp flagg?
+//Temp flagg, reoccuring som forhindrer sletting
 //Legge inn timestamps
 //Installscript, kompilasjon, etter å ha fikset feilmeldinger, 0.1 bør bli ferdig snart.
 //REPL i 0.2 med en kortversjon (rediger et enkeltelement, og en komplett en)
-//unngå dobbel/trippelprinting, alt bør bruke samme print funksjon, og kun gjøre det engang.
 //Cutoff på tekst/formatering.
 //Priority?
 //Grab bag
@@ -239,4 +237,5 @@ func main() {
 // default til 1? + hvis man ikke setter flagg og den ikke fins registrer den, eller clock inn hvis den fins. er dette dårlig oppførsel?
 //bug? Hva er my acitivity?
 //spaces i string i aktivitet? er dette et problem med hvordan map funker?
-//waterfall? dependent activities
+//waterfall? dependent activities, mulig man trenger en egen datastruktur for det? tris?
+//må fikse litt quotes før inputs går inn
