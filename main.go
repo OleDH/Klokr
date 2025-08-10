@@ -125,7 +125,7 @@ func clockIn(input string, data map[string]ClockedItem) error {
 
 func interactiveInit(input string, freq int, m map[string]ClockedItem) {
 
-	input = fmt.Sprintf("%s", input)
+	//input = fmt.Sprintf("%s", input)
 
 	key := strings.TrimRight(input, " ")
 
@@ -221,21 +221,30 @@ func main() {
 
 }
 
-//TODO: Fiks litt mer feilmeldinger, implementer lister og appending, senere tid og sånn
-//TODO: Implementer Receiver funksjoner.
-//TODO: Multiinput, sjekk om det fins noe ala unix opts.
-//TODO: Rename activity?
-//Temp flagg, reoccuring som forhindrer sletting
-//Legge inn timestamps
+//0.1:
 //Installscript, kompilasjon, etter å ha fikset feilmeldinger, 0.1 bør bli ferdig snart.
-//REPL i 0.2 med en kortversjon (rediger et enkeltelement, og en komplett en)
-//Cutoff på tekst/formatering.
-//Priority?
-//Grab bag
-//Cleanup etter lang tid
+//QA
+
+//0.2
 //tab completion?
+//Implementer Receiver funksjoner.
+//Refactor
+//Priority?
+//Legge inn timestamps, tidsenheter o.l
+//Rename activity
+
+//0.3
+//REPL
+//Temp flagg, slettes når tom
+//reoccuring som forhindrer sletting
+
+//0.x
+//TODO: Multiinput, sjekk om det fins noe ala unix opts.
+//TODO: Fiks litt mer feilmeldinger, implementer lister og appending, senere tid og sånn
+//Cutoff på tekst/formatering.
+//Grab bag, velg noe med lav prioritet, kan kanskje ta en optional arg med så mye tid har jeg idag, fyll inn
+//Cleanup etter lang tid
 // default til 1? + hvis man ikke setter flagg og den ikke fins registrer den, eller clock inn hvis den fins. er dette dårlig oppførsel?
-//bug? Hva er my acitivity?
 //spaces i string i aktivitet? er dette et problem med hvordan map funker?
 //waterfall? dependent activities, mulig man trenger en egen datastruktur for det? tris?
 //må fikse litt quotes før inputs går inn
