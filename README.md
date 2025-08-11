@@ -3,12 +3,12 @@ CLI practice project written in Golang. Combine a todo list with a time manageme
 
 Planned Feature list(per august release):
 
-1. To Do list -[x]
-2. Manual appclocking -[x]
-3. End of week report -[]
-4. Tracking of time on each app -[]
-5. Autolaunching of apps (may use cronjobs for this) -[]
-6. Dashboard UI, graphs of some kind (maybe) -[]
+1. To Do list - [x]
+2. Manual appclocking - [x]
+3. End of week report - []
+4. Tracking of time on each app - []
+5. Autolaunching of apps (may use cronjobs for this) - []
+6. Dashboard UI, graphs of some kind (maybe) - []
 
 8. How to use:
    klokr -h #list all commands
