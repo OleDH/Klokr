@@ -6,15 +6,60 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 )
 
-var filepath = "clocked.json"
-var delete_empty = true
+func ensureDir(dir string) error {
+	return os.MkdirAll(dir, 0o755)
+}
 
 type ClockedItem struct {
 	Activity  string `json:"activity"`
 	Frequency int    `json:"frequency"`
+}
+
+type Clockhandler struct {
+	Data     map[string]ClockedItem `json:"data"`
+	JSONpath string
+	OptPath  string
+}
+
+func MakeclockHandler() *Clockhandler {
+
+	return &Clockhandler{Data: make(map[string]ClockedItem)}
+
+}
+
+func (c *Clockhandler) ensureInit() {
+	if c.Data == nil {
+		c.Data = make(map[string]ClockedItem)
+	}
+}
+
+type Settings struct {
+	DeleteEmpty bool `json:"delete_empty"`
+}
+
+func (c *Clockhandler) LoadSettings() (Settings, error) {
+	var s Settings
+	b, err := os.ReadFile(c.OptPath)
+	if os.IsNotExist(err) {
+		return s, nil
+	}
+	if err != nil {
+		return s, err
+	}
+	return s, json.Unmarshal(b, &s)
+}
+
+func (c *Clockhandler) SaveSettings(s Settings) error {
+	b, err := json.Marshal(s)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(c.OptPath, b, 0o644)
 }
 
 func makeClock(s string, z int) ClockedItem {
@@ -23,137 +68,150 @@ func makeClock(s string, z int) ClockedItem {
 		Activity:  s,
 		Frequency: z,
 	}
-
 	return NewActivity
 
 }
 
-func dataEntry(filedata map[string]ClockedItem) error {
+func userDataDir(app string) (string, error) {
+	if d, err := os.UserConfigDir(); err == nil && d != "" {
+		// for data prefer XDG_DATA_HOME if set
+		if x := os.Getenv("XDG_DATA_HOME"); x != "" {
+			return filepath.Join(x, app), nil
+		}
+		// fallback: put under config dir sibling
+		return filepath.Join(d, app), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	if x := os.Getenv("XDG_DATA_HOME"); x != "" {
+		return filepath.Join(x, app), nil
+	}
+	return filepath.Join(home, ".local", "share", app), nil
+}
 
-	data, err := json.Marshal(filedata)
+func (c *Clockhandler) dataEntry() error {
+	wrapper := struct {
+		Data map[string]ClockedItem `json:"data"`
+	}{Data: c.Data}
+
+	b, err := json.Marshal(wrapper)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(c.JSONpath, b, 0o644)
+}
+
+func (c *Clockhandler) readFromFile() error {
+	// Ensure map exists
+	c.ensureInit()
+
+	// If file doesn’t exist, treat as empty
+	if _, err := os.Stat(c.JSONpath); os.IsNotExist(err) {
+		return nil
+	}
+
+	b, err := os.ReadFile(c.JSONpath)
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(filepath, data, 0644)
-	if err != nil {
+	// Unmarshal into a temporary wrapper matching on-disk shape
+	var disk struct {
+		Data map[string]ClockedItem `json:"data"`
+	}
+	if err := json.Unmarshal(b, &disk); err != nil {
 		return err
 	}
 
+	// Replace current map with loaded one
+	c.Data = disk.Data
+	if c.Data == nil {
+		c.Data = make(map[string]ClockedItem)
+	}
 	return nil
-
 }
 
-func readFromFile(m map[string]ClockedItem) {
+func (c *Clockhandler) clockIn(input string) error {
 
-	file_contents, err := os.ReadFile(filepath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	var clocked ClockedItem
-	if err := json.Unmarshal(file_contents, &clocked); err != nil {
-
-		log.Fatalf("Error unmarshalling JSON: %v", err)
-	}
-
-	fmt.Println(m)
-
-}
-
-func getFromFile(input string, m map[string]ClockedItem) ClockedItem {
-
-	file_contents, err := os.ReadFile(filepath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	var clocked ClockedItem
-	if err := json.Unmarshal(file_contents, &clocked); err != nil {
-
-		log.Fatalf("Error unmarshalling JSON: %v", err)
-	}
-
-	//bør ha en sjekk om den fins?
-	return m[input]
-
-	//kan bare lese et element enn så lenge
-
-}
-
-func getMapfromFile() map[string]ClockedItem {
-
-	if _, err := os.Stat(filepath); os.IsNotExist(err) {
-		// File doesn't exist, return empty map
-		return make(map[string]ClockedItem)
-	}
-
-	file_contents, err := os.ReadFile(filepath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var struturedData map[string]ClockedItem
-	if err := json.Unmarshal(file_contents, &struturedData); err != nil {
-
-		log.Fatalf("Error unmarshalling JSON: %v", err)
-	}
-
-	return struturedData
-
-}
-
-func clockIn(input string, data map[string]ClockedItem) error {
+	c.ensureInit()
 	//decrement func
-	editable := getFromFile(input, data)
-
-	if editable.Frequency <= 0 {
-		return fmt.Errorf("too small")
+	key := strings.TrimSpace(input)
+	item, ok := c.Data[key]
+	if !ok {
+		return fmt.Errorf("activity not found: %q", key)
 	}
-
-	editable.Frequency--
-	data[editable.Activity] = editable
-
-	if editable.Frequency == 0 && delete_empty {
-
-		delete(data, input)
-
+	if item.Frequency <= 0 {
+		return fmt.Errorf("frequency already zero for %q", key)
 	}
-	dataEntry(data)
-	fmt.Println("Clocked in !")
-	readFromFile(data)
+	item.Frequency--
+	s, _ := c.LoadSettings()
+	if item.Frequency <= 0 && s.DeleteEmpty {
+		delete(c.Data, key)
+	} else {
+		c.Data[key] = item
+	}
+	if err := c.dataEntry(); err != nil {
+		return err
+	}
+	fmt.Println("Clocked in!")
+
 	return nil
 }
 
-func interactiveInit(input string, freq int, m map[string]ClockedItem) {
+func (C *Clockhandler) interactiveInit(input string, freq int) error {
 
-	//input = fmt.Sprintf("%s", input)
+	C.ensureInit()
+	key := strings.TrimSpace(input)
+	C.Data[key] = makeClock(key, freq)
 
-	key := strings.TrimRight(input, " ")
-
-	fmt.Println(key)
-	m[key] = makeClock(input, freq)
-
-	dataEntry(m)
+	return C.dataEntry()
 
 }
 
 func listAll(m map[string]ClockedItem) {
-
-	println("Activity|Frequency")
-	for activ, freq := range m {
-
-		fmt.Printf("%.20s\t%d\n", activ, freq.Frequency)
-
-		//ser noenlunde grei ut, finn lit mer ut med formatering.
-		//bør og se hvordan man kan print ut mer når structen blir større m/timestamps etc
-
+	fmt.Println("Activity|Frequency")
+	keys := keysByFreq(m)
+	for _, k := range keys {
+		fmt.Printf("%.20s\t%d\n", k, m[k].Frequency)
 	}
+}
 
-	fmt.Printf("OPS: Delete empty is %t \n", delete_empty)
+func keysByFreq(m map[string]ClockedItem) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if m[keys[i]].Frequency == m[keys[j]].Frequency {
+			return keys[i] < keys[j]
+		}
+		return m[keys[i]].Frequency < m[keys[j]].Frequency
+	})
+	return keys
 }
 
 func main() {
 
-	lookupMap := getMapfromFile()
+	dataDir, _ := userDataDir("klokr")
+	configDir, _ := os.UserConfigDir()
+	appConfigDir := filepath.Join(configDir, "klokr")
+
+	if err := ensureDir(dataDir); err != nil {
+		log.Fatal(err)
+	}
+	if err := ensureDir(appConfigDir); err != nil {
+		log.Fatal(err)
+	}
+
+	handler := MakeclockHandler()
+	handler.JSONpath = filepath.Join(dataDir, "clocked.json")
+	handler.OptPath = filepath.Join(appConfigDir, "opts.json")
+
+	if err := handler.readFromFile(); err != nil {
+		log.Fatal(err)
+	}
 
 	//generiske verdier for flaggene
 	activity := ""
@@ -162,58 +220,82 @@ func main() {
 	printelement := ""
 	list_all := false
 	delete_flag := ""
+	delete_empty := false
+	var listForCompletion bool
+	flag.BoolVar(&listForCompletion, "list", false, "list activities for completion")
 
 	flag.StringVar(&activity, "a", "myActivity", "Add activity or update activity")
 	flag.StringVar(&delete_flag, "d", "", "Delete activity")
-	flag.StringVar(&clocking, "k", "", "Clock Activity")
+	flag.StringVar(&clocking, "c", "", "Clock Activity")
 	flag.IntVar(&frequency, "f", 0, "Sets frequency for desired activity")
 	flag.StringVar(&printelement, "p", "", "Prints activity")
 	flag.BoolVar(&list_all, "ls", false, "Pretty prints the todolist")
 	flag.BoolVar(&delete_empty, "sde", false, "Set delete when activity empty")
 
-	//bruker default verdien når man klokker inn, clocking må kanskje ta inn andre args
-
 	flag.Parse()
 
 	if activity != "" && frequency != 0 {
+		if err := handler.interactiveInit(activity, frequency); err != nil {
+			log.Fatal(err)
+		}
 
-		interactiveInit(activity, frequency, lookupMap)
-		//bruke dataentry her istedet?
+		if delete_flag != "" {
+			delete(handler.Data, strings.TrimSpace(delete_flag))
+			if err := handler.dataEntry(); err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("Deleted %s\n", delete_flag)
+		}
 
 	}
 
-	//clocked og freq samtidig kan bli sketch
+	if listForCompletion {
+		keys := make([]string, 0, len(handler.Data))
+		for k := range handler.Data {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			fmt.Println(k)
+		}
+		return
+	}
 
 	if clocking != "" {
 
-		clockIn(clocking, lookupMap)
+		if err := handler.clockIn(clocking); err != nil {
+			log.Fatal(err)
+		}
 
 	}
 
+	if delete_empty {
+		s, _ := handler.LoadSettings()
+		s.DeleteEmpty = true
+		if err := handler.SaveSettings(s); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	if delete_flag != "" {
-
-		delete(lookupMap, delete_flag)
-		dataEntry(lookupMap)
-		fmt.Printf("Deleted %s \n", delete_flag)
-
-		//her bør det nok være noe feilhåndtering
-		//burde være en func, kanskje hvis levert med en int slett i listen? må se litt på hvordan map er lagret.
-
+		delete(handler.Data, strings.TrimSpace(delete_flag))
+		if err := handler.dataEntry(); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Deleted %s\n", delete_flag)
 	}
 
 	if printelement != "" {
 
-		//kanskje ha noe listing av json filen på forhånd.
+		a := handler.Data[printelement]
 
-		//readFromFile(lookupMap)
-		a := lookupMap[printelement]
 		fmt.Printf("Activity: %s \nFrequency: %d\n", a.Activity, a.Frequency)
 
 	}
 
 	if list_all {
 
-		listAll(lookupMap)
+		listAll(handler.Data)
 
 	}
 
@@ -226,7 +308,8 @@ func main() {
 //QA
 
 //0.2
-//tab completion?
+//Temp flagg, slettes når tom per struct
+//tab completion? Hver gang man cruder, oppdater complete i linux
 //Implementer Receiver funksjoner.
 //Refactor
 //Priority?
@@ -235,7 +318,7 @@ func main() {
 
 //0.3
 //REPL
-//Temp flagg, slettes når tom
+
 //reoccuring som forhindrer sletting
 
 //0.x
@@ -248,3 +331,4 @@ func main() {
 //spaces i string i aktivitet? er dette et problem med hvordan map funker?
 //waterfall? dependent activities, mulig man trenger en egen datastruktur for det? tris?
 //må fikse litt quotes før inputs går inn
+//kalender/rekkefølgepåting
