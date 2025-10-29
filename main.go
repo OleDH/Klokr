@@ -9,16 +9,28 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 func ensureDir(dir string) error {
 	return os.MkdirAll(dir, 0o755)
 }
 
+// Burde Clocked item være laveste element? frekvens kan bli flyttet ut til å denotere antall objekter i kategorien.
 type ClockedItem struct {
-	Activity  string `json:"activity"`
-	Frequency int    `json:"frequency"`
+	Activity  string    `json:"activity"`
+	Frequency int       `json:"frequency"`
+	CreatedAt time.Time `json:"createdat"`
+	ClosedAt  time.Time `json:"closedat"`
+	Dueby     time.Time `json:"dueby"`
+	Priority  int       `json:"priority"`
+	Recurring bool      `json:"recurring"`
+	Snoozed   int       `json:"snoozed"`
+	Baseline  int       `json:"baseline"`
 }
+
+//lag en reminder funkjson, dette blir nok interfacing med crontab, kan se på andre måter å purre på bruker, via notifications feks i cinnamon evt.
+//bruker nok time std for datoer, skal være snill nok til at gjeldende datoer må være innen midnatt til frist feks.
 
 type Clockhandler struct {
 	Data     map[string]ClockedItem `json:"data"`
@@ -67,6 +79,7 @@ func makeClock(s string, z int) ClockedItem {
 	NewActivity := ClockedItem{
 		Activity:  s,
 		Frequency: z,
+		CreatedAt: time.Now(),
 	}
 	return NewActivity
 
@@ -145,17 +158,25 @@ func (c *Clockhandler) clockIn(input string) error {
 	if item.Frequency <= 0 {
 		return fmt.Errorf("frequency already zero for %q", key)
 	}
+
 	item.Frequency--
+
 	s, _ := c.LoadSettings()
+
 	if item.Frequency <= 0 && s.DeleteEmpty {
 		delete(c.Data, key)
+	} else if item.Frequency <= 0 && !s.DeleteEmpty {
+		item.ClosedAt = time.Now()
+		c.Data[key] = item
+
 	} else {
 		c.Data[key] = item
 	}
+
 	if err := c.dataEntry(); err != nil {
 		return err
 	}
-	fmt.Println("Clocked in!")
+	fmt.Printf("Clocked in Activity: %s!, Frequency at: %d ", item.Activity, item.Frequency)
 
 	return nil
 }
@@ -198,6 +219,9 @@ func main() {
 	configDir, _ := os.UserConfigDir()
 	appConfigDir := filepath.Join(configDir, "klokr")
 
+	//d := time.Now()
+	//println(d.Date())
+
 	if err := ensureDir(dataDir); err != nil {
 		log.Fatal(err)
 	}
@@ -213,22 +237,25 @@ func main() {
 		log.Fatal(err)
 	}
 
-	//generiske verdier for flaggene
 	activity := ""
 	frequency := 0
 	clocking := ""
 	printelement := ""
+	printstruct := ""
 	list_all := false
 	delete_flag := ""
 	delete_empty := false
 	var listForCompletion bool
-	flag.BoolVar(&listForCompletion, "list", false, "list activities for completion")
+	reset := false
 
+	flag.BoolVar(&listForCompletion, "list", false, "list activities for completion")
+	flag.BoolVar(&reset, "reset", false, "Delete all data and start fresh")
 	flag.StringVar(&activity, "a", "myActivity", "Add activity or update activity")
 	flag.StringVar(&delete_flag, "d", "", "Delete activity")
 	flag.StringVar(&clocking, "c", "", "Clock Activity")
 	flag.IntVar(&frequency, "f", 0, "Sets frequency for desired activity")
-	flag.StringVar(&printelement, "p", "", "Prints activity")
+	flag.StringVar(&printelement, "p", "", "Prints activity and frequency")
+	flag.StringVar(&printstruct, "P", "", "Prints struct")
 	flag.BoolVar(&list_all, "ls", false, "Pretty prints the todolist")
 	flag.BoolVar(&delete_empty, "sde", false, "Set delete when activity empty")
 
@@ -239,14 +266,13 @@ func main() {
 			log.Fatal(err)
 		}
 
-		if delete_flag != "" {
-			delete(handler.Data, strings.TrimSpace(delete_flag))
-			if err := handler.dataEntry(); err != nil {
-				log.Fatal(err)
-			}
-			fmt.Printf("Deleted %s\n", delete_flag)
+	}
+	if delete_flag != "" {
+		delete(handler.Data, strings.TrimSpace(delete_flag))
+		if err := handler.dataEntry(); err != nil {
+			log.Fatal(err)
 		}
-
+		fmt.Printf("Deleted %s\n", delete_flag)
 	}
 
 	if listForCompletion {
@@ -269,14 +295,6 @@ func main() {
 
 	}
 
-	if delete_empty {
-		s, _ := handler.LoadSettings()
-		s.DeleteEmpty = true
-		if err := handler.SaveSettings(s); err != nil {
-			log.Fatal(err)
-		}
-	}
-
 	if delete_flag != "" {
 		delete(handler.Data, strings.TrimSpace(delete_flag))
 		if err := handler.dataEntry(); err != nil {
@@ -293,25 +311,48 @@ func main() {
 
 	}
 
+	if printstruct != "" {
+
+		a := handler.Data[printstruct]
+
+		//fmt.Printf("Activity: %s \nFrequency: %d\n", a.Activity, a.Frequency)
+		fmt.Println(a)
+
+	}
+
 	if list_all {
 
 		listAll(handler.Data)
 
 	}
 
+	// ...
+	if reset {
+		os.Remove(handler.JSONpath)
+		fmt.Println("Data reset!")
+		return
+	}
+
 	//capitalize eller standardiser før en check.
 
 }
 
+//DEMO: implementer tid
+// implementer resten av struct .
+//update metode
+// http server
+// sql logikk
+
 //0.1:
 //Installscript, kompilasjon, etter å ha fikset feilmeldinger, 0.1 bør bli ferdig snart.
 //QA
+//
 
 //0.2
 //Temp flagg, slettes når tom per struct
 //tab completion? Hver gang man cruder, oppdater complete i linux
-//Implementer Receiver funksjoner.
-//Refactor
+//Implementer Receiver funksjoner. _/
+//Refactor _/
 //Priority?
 //Legge inn timestamps, tidsenheter o.l
 //Rename activity
