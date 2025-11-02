@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -29,6 +31,7 @@ type ClockedItem struct {
 	Baseline  int       `json:"baseline"`
 }
 
+//implementerer duebuty og under etter http
 //lag en reminder funkjson, dette blir nok interfacing med crontab, kan se på andre måter å purre på bruker, via notifications feks i cinnamon evt.
 //bruker nok time std for datoer, skal være snill nok til at gjeldende datoer må være innen midnatt til frist feks.
 
@@ -213,6 +216,58 @@ func keysByFreq(m map[string]ClockedItem) []string {
 	return keys
 }
 
+// flytt server logikk ut i egen fil
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) error {
+	response, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(code)
+	w.Write(response)
+	return nil
+}
+
+func respondWithError(w http.ResponseWriter, code int, msg string) error {
+	return respondWithJSON(w, code, map[string]string{"error": msg})
+}
+
+func (c *Clockhandler) httpHandler(w http.ResponseWriter, r *http.Request) {
+
+	switch r.Method {
+	case "GET":
+		//return entire json
+		respondWithJSON(w, 200, c.Data)
+		return
+
+	case "POST":
+
+		defer r.Body.Close()
+
+		var params ClockedItem
+
+		dat, err := io.ReadAll(r.Body)
+		if err != nil {
+			respondWithError(w, 500, "couldn't read request")
+			return
+		}
+
+		err = json.Unmarshal(dat, &params)
+		if err != nil {
+			respondWithError(w, 500, "couldn't unmarshal parameters")
+			return
+		}
+		c.Data[params.Activity] = params
+		c.dataEntry()
+
+		respondWithJSON(w, 200, params)
+
+	default:
+		respondWithError(w, 405, "Method not allowed")
+	}
+}
+
 func main() {
 
 	dataDir, _ := userDataDir("klokr")
@@ -236,6 +291,11 @@ func main() {
 	if err := handler.readFromFile(); err != nil {
 		log.Fatal(err)
 	}
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/todos", handler.httpHandler)
+	log.Fatal(http.ListenAndServe(":8080", mux))
 
 	activity := ""
 	frequency := 0
