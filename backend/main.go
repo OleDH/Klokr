@@ -292,11 +292,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/todos", handler.httpHandler)
-	log.Fatal(http.ListenAndServe(":8080", mux))
-
+	var servermode = false
 	activity := ""
 	frequency := 0
 	clocking := ""
@@ -308,6 +304,7 @@ func main() {
 	var listForCompletion bool
 	reset := false
 
+	flag.BoolVar(&servermode, "serve", false, "start httpserver")
 	flag.BoolVar(&listForCompletion, "list", false, "list activities for completion")
 	flag.BoolVar(&reset, "reset", false, "Delete all data and start fresh")
 	flag.StringVar(&activity, "a", "myActivity", "Add activity or update activity")
@@ -321,18 +318,17 @@ func main() {
 
 	flag.Parse()
 
+	if servermode {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/todos", handler.httpHandler)
+		log.Fatal(http.ListenAndServe(":8080", mux))
+	}
+
 	if activity != "" && frequency != 0 {
 		if err := handler.interactiveInit(activity, frequency); err != nil {
 			log.Fatal(err)
 		}
 
-	}
-	if delete_flag != "" {
-		delete(handler.Data, strings.TrimSpace(delete_flag))
-		if err := handler.dataEntry(); err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("Deleted %s\n", delete_flag)
 	}
 
 	if listForCompletion {
