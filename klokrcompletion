@@ -1,0 +1,17 @@
+_klokr_complete() {
+  COMPREPLY=()
+  local cur prev
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+  case "$prev" in
+    -c|--clock|--clock-activity)
+      COMPREPLY=( $(compgen -W "$(klokr --list 2>/dev/null)" -- "$cur") )
+      return 0
+      ;;
+  esac
+
+  local flags="-c -a -f -d -p --list -ls -sde"
+  COMPREPLY=( $(compgen -W "$flags $(klokr --list 2>/dev/null)" -- "$cur") )
+}
+complete -F _klokr_complete klokr

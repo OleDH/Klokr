@@ -1,0 +1,30 @@
+
+# Workout
+curl -X POST http://localhost:8080/todos \
+  -H "Content-Type: application/json" \
+  -d '{"activity": "workout", "frequency": 5, "createdat": "2024-11-03T10:00:00Z", "priority": 3}'
+
+# Laundry
+curl -X POST http://localhost:8080/todos \
+  -H "Content-Type: application/json" \
+  -d '{"activity": "laundry", "frequency": 2, "createdat": "2024-11-03T11:00:00Z", "priority": 2}'
+
+# Groceries
+curl -X POST http://localhost:8080/todos \
+  -H "Content-Type: application/json" \
+  -d '{"activity": "groceries", "frequency": 1, "createdat": "2024-11-03T12:00:00Z", "priority": 1}'
+
+# Study Norwegian
+curl -X POST http://localhost:8080/todos \
+  -H "Content-Type: application/json" \
+  -d '{"activity": "study Norwegian", "frequency": 10, "createdat": "2024-11-03T08:00:00Z", "priority": 5}'
+
+# Call Mom
+curl -X POST http://localhost:8080/todos \
+  -H "Content-Type: application/json" \
+  -d '{"activity": "call mom", "frequency": 1, "createdat": "2024-11-02T15:00:00Z", "priority": 4}'
+
+# Read book
+curl -X POST http://localhost:8080/todos \
+  -H "Content-Type: application/json" \
+  -d '{"activity": "read book", "frequency": 7, "createdat": "2024-11-01T20:00:00Z", "priority": 2}'
